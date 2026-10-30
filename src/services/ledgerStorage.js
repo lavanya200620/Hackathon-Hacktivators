@@ -4,7 +4,7 @@ const SOURCES_KEY = 'sourcemark_sources_db';
 const LEDGER_KEY = 'sourcemark_ledger_chain';
 const DEMO_MODE_KEY = 'sourcemark_demo_mode';
 
-// Default initial forensic demo seed records
+// Default initial forensic demo seed records with mathematically authentic Ed25519 signatures
 const INITIAL_SOURCES = [
   {
     id: 'SRC-98214',
@@ -13,9 +13,9 @@ const INITIAL_SOURCES = [
     fileSize: 2458920,
     fileSizeFormatted: '2.34 MB',
     sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    signature: '7a83d4c6f50b9123847289abcf123894723894bcefa012938471203948abcdf1982347102938471029384710293847102938471029384710293847102938471a',
-    publicKey: 'a9103847bce12830948120938471029384710293847102938471029384710293',
-    keyId: 'ED25519-A9103847',
+    signature: '9d5ad770fdfea75d151c1b582fbff78e5b5deb46ca56aef76db4f6b3152e99331bd6d70241b992cf2f4fcbcc485197f422fa6f7e45c8650c7646b36a712c810a',
+    publicKey: '2a71a70705363c8fd0e154e5ac0386725dba39fdc8d175f9cf688ffd63af4a9f',
+    keyId: 'ED25519-2A71A707',
     creator: 'Dr. Evelyn Vance (Chief Geoint Analyst)',
     creatorId: 'AGY-USR-0042',
     category: 'Satellite Intelligence',
@@ -33,9 +33,9 @@ const INITIAL_SOURCES = [
     fileSize: 524288,
     fileSizeFormatted: '512 KB',
     sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
-    signature: '81f6238bc39103847109238471029384710293847102938471029384710293847102938471029384710293847102938471029384710293847102938471029384',
-    publicKey: 'b829384710293847102938471029384710293847102938471029384710293847',
-    keyId: 'ED25519-B8293847',
+    signature: '34a9a086a084ee48bce427ca1c1a0413f86733076230b1c3f84ab8edf41d6613e7eab4ce9025fc2b83904ff4a0751dbb5dda0732b0226c0c56ec71498933270b',
+    publicKey: 'a19b169bb061b6f37bef103a0049f43f5451c958dfcbf4222deeeb2685f26b51',
+    keyId: 'ED25519-A19B169B',
     creator: 'SecOps Build Automation',
     creatorId: 'SYSTEM-CI-BUILD',
     category: 'System Firmware',
@@ -53,9 +53,9 @@ const INITIAL_SOURCES = [
     fileSize: 1845100,
     fileSizeFormatted: '1.76 MB',
     sha256: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
-    signature: '6471029384710293847102938471029384710293847102938471029384710293847102938471029384710293847102938471029384710293847102938471029',
-    publicKey: 'c129384710293847102938471029384710293847102938471029384710293847',
-    keyId: 'ED25519-C1293847',
+    signature: '0fdcc5b4f5b9b81f1b5e59309282dfccedd735ba542270bf57d30281d506d6f433811ff40603900d5f4f0501c41fa34c90f46f9a8de18e151236f35fd62e6c04',
+    publicKey: '1d4cbe1ad10ab20738f35f97fc446a9dcddd82a5297ab807647805c5f8f91420',
+    keyId: 'ED25519-1D4CBE1A',
     creator: 'Sarah Jenkins, Esq. (Legal Counsel)',
     creatorId: 'AGY-USR-0119',
     category: 'Legal Document',
@@ -101,7 +101,7 @@ const INITIAL_LEDGER = [
       fileName: 'satellite_recon_orbital_07.png',
       fingerprint: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       creatorId: 'AGY-USR-0042',
-      keyId: 'ED25519-A9103847',
+      keyId: 'ED25519-2A71A707',
     }
   },
   {
@@ -137,7 +137,7 @@ const INITIAL_LEDGER = [
       fileName: 'secure_firmware_release_v4.2.1.bin',
       fingerprint: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
       creatorId: 'SYSTEM-CI-BUILD',
-      keyId: 'ED25519-B8293847',
+      keyId: 'ED25519-A19B169B',
     }
   },
   {
@@ -173,7 +173,7 @@ const INITIAL_LEDGER = [
       fileName: 'acquisition_term_sheet_final.pdf',
       fingerprint: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
       creatorId: 'AGY-USR-0119',
-      keyId: 'ED25519-C1293847',
+      keyId: 'ED25519-1D4CBE1A',
     }
   }
 ];
@@ -186,7 +186,16 @@ export const ledgerStorage = {
         localStorage.setItem(SOURCES_KEY, JSON.stringify(INITIAL_SOURCES));
         return INITIAL_SOURCES;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Auto-migrate if previous mock signatures were cached in localStorage
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const first = parsed.find(s => s.id === 'SRC-98214');
+        if (first && first.signature.startsWith('7a83d4c6f5')) {
+          localStorage.setItem(SOURCES_KEY, JSON.stringify(INITIAL_SOURCES));
+          return INITIAL_SOURCES;
+        }
+      }
+      return parsed;
     } catch (e) {
       return INITIAL_SOURCES;
     }

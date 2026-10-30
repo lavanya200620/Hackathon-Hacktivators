@@ -443,8 +443,10 @@ export default function Verify() {
 
                 <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
                   <span className="text-slate-500 uppercase text-[10px] block">Ed25519 Signature</span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
-                    <Key className="w-4 h-4" /> Validated Authentic
+                  <span className={`font-bold flex items-center gap-1.5 mt-0.5 ${
+                    verificationResult.signatureValid ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>
+                    <Key className="w-4 h-4" /> {verificationResult.signatureValid ? 'Validated Authentic' : 'Invalid / Failed'}
                   </span>
                 </div>
 
@@ -480,6 +482,73 @@ export default function Verify() {
                 <div className="p-3 rounded-lg bg-navy-900 border border-emerald-500/30 text-emerald-300 font-mono text-xs break-all select-all">
                   {verificationResult.source.sha256}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: SIGNATURE INVALID (RED / AMBER ALERT) */}
+          {verificationResult.verdict === 'SIGNATURE_INVALID' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-rose-500/50 shadow-glow-red space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-glow-red">
+                    <XCircle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Signature Mismatch – Digital Signature Invalid</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-950 border border-rose-500/50 text-rose-400">
+                        FORGERY WARNING
+                      </span>
+                    </div>
+                    <p className="text-xs text-rose-300/90 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-navy-900 border border-slate-800 text-xs font-mono text-rose-400">
+                    Source ID: {verificationResult.source.id}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Fingerprint Match</span>
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4" /> Hash Bitwise Matched
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-rose-500/30">
+                  <span className="text-slate-500 uppercase text-[10px] block">Ed25519 Signature</span>
+                  <span className="text-rose-400 font-bold flex items-center gap-1.5 mt-0.5">
+                    <XCircle className="w-4 h-4" /> Cryptographically Invalid
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Claimed Creator</span>
+                  <span className="text-slate-200 font-sans truncate block mt-0.5">
+                    {verificationResult.source.creator}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Signer Public Key</span>
+                  <span className="text-slate-300 font-mono mt-0.5 block truncate">
+                    {verificationResult.source.keyId || 'ED25519-ROOT'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <p>
+                  <strong>Cryptographic Violation:</strong> The content SHA-256 fingerprint corresponds to a registered source, but the accompanying Ed25519 asymmetric signature did not pass Curve25519 mathematical verification against the declared public key. Authenticity cannot be guaranteed.
+                </p>
               </div>
             </div>
           )}

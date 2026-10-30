@@ -53,11 +53,17 @@ export default function Overview() {
     setTimeout(() => setIsRefreshing(false), 300);
   };
 
-  // Pie chart distribution data
+  // Dynamic Pie chart distribution data based on live sources and ledger blocks
+  const originalVerifications = ledgerBlocks.filter(b => b.type === 'VERIFY_ORIGINAL').length;
+  const verifiedCount = 38 + sources.length + originalVerifications;
+  const editedCount = (stats.editedDetected || 4) + ledgerBlocks.filter(b => b.type === 'TAMPER_DETECTED').length;
+  const unknownCount = (stats.unknownDetected || 9) + ledgerBlocks.filter(b => b.type === 'VERIFY_UNKNOWN').length;
+  const totalChecked = verifiedCount + editedCount + unknownCount;
+
   const distributionData = [
-    { name: 'Original (Verified)', value: 42, color: '#10B981' },
-    { name: 'Edited (Tampered)', value: stats.editedDetected || 4, color: '#EF4444' },
-    { name: 'Unknown (Unregistered)', value: stats.unknownDetected || 9, color: '#F59E0B' },
+    { name: 'Original (Verified)', value: verifiedCount, color: '#10B981' },
+    { name: 'Edited (Tampered)', value: editedCount, color: '#EF4444' },
+    { name: 'Unknown (Unregistered)', value: unknownCount, color: '#F59E0B' },
   ];
 
   // Timeline verification activity
@@ -266,7 +272,7 @@ export default function Overview() {
             </ResponsiveContainer>
             {/* Center metric */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-xl font-extrabold text-white font-mono">55</span>
+              <span className="text-xl font-extrabold text-white font-mono">{totalChecked}</span>
               <span className="text-[10px] text-slate-400 uppercase tracking-wider">Checked</span>
             </div>
           </div>

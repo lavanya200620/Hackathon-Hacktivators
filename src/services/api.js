@@ -102,15 +102,15 @@ export const apiService = {
       // Check if hashes match
       const isExactMatch = matchedSource.sha256.toLowerCase() === sha256.toLowerCase();
 
-      if (isExactMatch) {
-        // Cryptographically verify the Ed25519 signature
-        const isSigValid = verifyFingerprintSignature(
-          matchedSource.sha256,
-          matchedSource.signature,
-          matchedSource.publicKey
-        );
+      // Cryptographically verify the Ed25519 signature
+      const isSigValid = verifyFingerprintSignature(
+        matchedSource.sha256,
+        matchedSource.signature,
+        matchedSource.publicKey
+      );
 
-        // Update verification count
+      if (isExactMatch && isSigValid) {
+        // STRICT ORIGINAL: Both hash AND Ed25519 signature are valid
         matchedSource.verificationCount = (matchedSource.verificationCount || 0) + 1;
         matchedSource.lastVerifiedAt = new Date().toISOString();
 
@@ -118,7 +118,7 @@ export const apiService = {
           sourceId: matchedSource.id,
           fileName: matchedSource.fileName,
           hash: sha256,
-          signatureValid: isSigValid,
+          signatureValid: true,
           verdict: 'ORIGINAL',
         });
 
@@ -127,9 +127,29 @@ export const apiService = {
           status: 'success',
           message: 'Original – Cryptographically Verified',
           source: matchedSource,
-          signatureValid: isSigValid,
+          signatureValid: true,
           hashMatch: true,
           details: 'The uploaded file bitstream matches the registered master fingerprint with a mathematically valid Ed25519 digital signature.',
+          isDemoMode: true,
+        };
+      } else if (isExactMatch && !isSigValid) {
+        // HASH MATCHES BUT SIGNATURE FAILED MATHEMATICAL VERIFICATION
+        await ledgerStorage.addLedgerBlock('TAMPER_DETECTED', `Signature Alert: Invalid Signature for ${matchedSource.id}`, {
+          sourceId: matchedSource.id,
+          fileName: matchedSource.fileName,
+          hash: sha256,
+          signatureValid: false,
+          verdict: 'SIGNATURE_INVALID',
+        });
+
+        return {
+          verdict: 'SIGNATURE_INVALID',
+          status: 'danger',
+          message: 'Signature Mismatch – Digital Signature Invalid',
+          source: matchedSource,
+          signatureValid: false,
+          hashMatch: true,
+          details: 'The file bitstream matches registered fingerprint ' + matchedSource.id + ', but the Ed25519 digital signature failed mathematical verification. Content origin cannot be authenticated.',
           isDemoMode: true,
         };
       } else {
@@ -138,6 +158,7 @@ export const apiService = {
           sourceId: matchedSource.id,
           originalHash: matchedSource.sha256,
           uploadedHash: sha256,
+          signatureValid: false,
           verdict: 'EDITED',
         });
 

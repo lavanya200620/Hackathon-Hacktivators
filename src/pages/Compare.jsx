@@ -31,10 +31,11 @@ export default function Compare() {
   const [hashA, setHashA] = useState('');
   const [hashB, setHashB] = useState('');
 
-  // Mode: 'image' | 'text'
+  // Mode: 'image' | 'text' | 'mismatch'
   const [mode, setMode] = useState('image');
   const [textA, setTextA] = useState('');
   const [textB, setTextB] = useState('');
+  const [formatError, setFormatError] = useState('');
 
   // Image Analysis State
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -58,6 +59,7 @@ export default function Compare() {
 
   // Load Demo Presets for immediate Hackathon Demonstration
   const loadDemoComparison = (presetType) => {
+    setFormatError('');
     if (presetType === 'image') {
       setMode('image');
       // Create sample image canvases
@@ -204,16 +206,83 @@ SECTION 5. GOVERNING JURISDICTION
     }, 200);
   };
 
+  // Compare real user uploaded images
+  const compareUserImages = (dataUrlA, dataUrlB) => {
+    setIsAnalyzing(true);
+    const imgA = new Image();
+    const imgB = new Image();
+
+    let loaded = 0;
+    const onBothLoaded = () => {
+      loaded++;
+      if (loaded < 2) return;
+
+      const w = Math.max(imgA.width, imgB.width) || 400;
+      const h = Math.max(imgA.height, imgB.height) || 300;
+      setDimensions({ width: w, height: h });
+
+      const canvasA = document.createElement('canvas');
+      canvasA.width = w;
+      canvasA.height = h;
+      const ctxA = canvasA.getContext('2d');
+      ctxA.drawImage(imgA, 0, 0, w, h);
+
+      const canvasB = document.createElement('canvas');
+      canvasB.width = w;
+      canvasB.height = h;
+      const ctxB = canvasB.getContext('2d');
+      ctxB.drawImage(imgB, 0, 0, w, h);
+
+      computePixelDifference(canvasA, canvasB, w, h);
+    };
+
+    imgA.onload = onBothLoaded;
+    imgB.onload = onBothLoaded;
+    imgA.src = dataUrlA;
+    imgB.src = dataUrlB;
+  };
+
+  // Automatic comparison & format compatibility check effect
+  useEffect(() => {
+    setFormatError('');
+
+    if (fileA && fileB) {
+      const isImgA = fileA.type.startsWith('image/');
+      const isImgB = fileB.type.startsWith('image/');
+      const isTextA = fileA.type.startsWith('text/') || fileA.name.endsWith('.txt');
+      const isTextB = fileB.type.startsWith('text/') || fileB.name.endsWith('.txt');
+
+      // Check for mismatched formats
+      if ((isImgA && !isImgB) || (!isImgA && isImgB)) {
+        setFormatError(
+          `Incompatible file formats: Cannot compare an image (${fileA.name}) with a non-image file (${fileB.name}). Both files must be images, or both must be text files.`
+        );
+        setMode('mismatch');
+        setDiffPercent(null);
+        return;
+      }
+
+      if (isImgA && isImgB) {
+        setMode('image');
+        if (previewA && previewB) {
+          compareUserImages(previewA, previewB);
+        }
+      } else if (isTextA && isTextB) {
+        setMode('text');
+      }
+    }
+  }, [previewA, previewB, textA, textB, fileA, fileB]);
+
   // Handle User File Uploads
   const handleUploadA = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
     setFileA(f);
+    setFormatError('');
     const hash = await calculateSHA256(f);
     setHashA(hash);
 
     if (f.type.startsWith('image/')) {
-      setMode('image');
       const reader = new FileReader();
       reader.onload = (ev) => {
         setPreviewA(ev.target.result);
@@ -221,7 +290,6 @@ SECTION 5. GOVERNING JURISDICTION
       };
       reader.readAsDataURL(f);
     } else {
-      setMode('text');
       const text = await f.text();
       setTextA(text);
     }
@@ -231,11 +299,11 @@ SECTION 5. GOVERNING JURISDICTION
     const f = e.target.files[0];
     if (!f) return;
     setFileB(f);
+    setFormatError('');
     const hash = await calculateSHA256(f);
     setHashB(hash);
 
     if (f.type.startsWith('image/')) {
-      setMode('image');
       const reader = new FileReader();
       reader.onload = (ev) => {
         setPreviewB(ev.target.result);
@@ -243,7 +311,6 @@ SECTION 5. GOVERNING JURISDICTION
       };
       reader.readAsDataURL(f);
     } else {
-      setMode('text');
       const text = await f.text();
       setTextB(text);
     }
@@ -355,8 +422,26 @@ SECTION 5. GOVERNING JURISDICTION
         </div>
       </div>
 
+      {/* Format Mismatch Error Banner */}
+      {formatError && (
+        <div className="glass-panel p-5 rounded-2xl border border-rose-500/50 bg-rose-950/30 shadow-glow-red flex items-start gap-3.5 animate-in slide-in-from-top-2">
+          <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 flex-shrink-0">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-rose-200">Incompatible Comparison Formats</h3>
+            <p className="text-xs text-rose-300/90 mt-1 leading-relaxed">
+              {formatError}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-2 font-mono">
+              Action required: Please upload two images (JPG, PNG) or two text files (.txt) to perform comparative tamper analysis.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Forensic Comparison Interface */}
-      {(previewA || textA) && (
+      {!formatError && (previewA || textA) && (
         <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
           {/* Controls Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">

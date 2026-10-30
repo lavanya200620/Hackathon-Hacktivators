@@ -31,6 +31,8 @@ export default function ProvenanceHistory() {
   const [sources, setSources] = useState([]);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortField, setSortField] = useState('registeredAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,7 +69,11 @@ export default function ProvenanceHistory() {
       const matchesStatus =
         statusFilter === 'ALL' || item.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      const itemDate = new Date(item.registeredAt);
+      const matchesDateFrom = !dateFrom || itemDate >= new Date(dateFrom);
+      const matchesDateTo = !dateTo || itemDate <= new Date(dateTo + 'T23:59:59.999Z');
+
+      return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
     })
     .sort((a, b) => {
       let valA = a[sortField];
@@ -149,20 +155,61 @@ export default function ProvenanceHistory() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="bg-navy-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-400"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE_REGISTERED">Active Registered</option>
-              <option value="ARCHIVED">Archived</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-navy-900 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-300">
+              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs text-slate-300 focus:outline-none"
+                title="Filter records from date"
+              />
+              <span className="text-slate-500">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs text-slate-300 focus:outline-none"
+                title="Filter records to date"
+              />
+              {(dateFrom || dateTo) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateFrom('');
+                    setDateTo('');
+                    setCurrentPage(1);
+                  }}
+                  className="text-slate-400 hover:text-cyan-400 text-[10px] uppercase font-mono px-1"
+                  title="Clear date filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-4 h-4 text-slate-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-navy-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-400"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE_REGISTERED">Active Registered</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -400,9 +447,11 @@ export default function ProvenanceHistory() {
                 {/* 5. Verification Events */}
                 <div className="relative">
                   <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-400 ring-4 ring-navy-900" />
-                  <p className="font-bold text-slate-200">5. Verification Inspections ({selectedSource.verificationCount || 1} queries)</p>
+                  <p className="font-bold text-slate-200">5. Verification Inspections ({selectedSource.verificationCount || 0} recorded queries)</p>
                   <p className="text-slate-400 text-[11px] mt-0.5">
-                    All incoming bitstream hashes verified against master Ed25519 anchor.
+                    {selectedSource.lastVerifiedAt 
+                      ? `Last cryptographically checked on ${new Date(selectedSource.lastVerifiedAt).toLocaleString()}.` 
+                      : 'Master source ready for zero-knowledge hash verification.'}
                   </p>
                 </div>
 
