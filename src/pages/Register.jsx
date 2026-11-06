@@ -170,6 +170,8 @@ export default function Register() {
         signature: signatureInfo.signatureHex,
         publicKey: signatureInfo.publicKeyHex,
         keyId: signatureInfo.keyId,
+        signedAt: signatureInfo.signedAt || signatureInfo.timestamp,
+        signatureTimestamp: signatureInfo.signedAt || signatureInfo.timestamp,
         creator: creatorName,
         creatorId: creatorId,
         category: category,
@@ -183,6 +185,9 @@ export default function Register() {
       setCurrentStep(6);
       setStepStatuses((prev) => ({ ...prev, 6: 'running' }));
       const apiResponse = await apiService.registerSource(payload);
+      if (apiResponse && apiResponse.success === false) {
+        throw new Error(apiResponse.error || 'Registration rejected by Key Security Authority');
+      }
       await delay(450);
       setStepStatuses((prev) => ({ ...prev, 6: 'completed' }));
 
@@ -387,13 +392,12 @@ export default function Register() {
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[260px] ${
-                dragActive
-                  ? 'border-cyan-400 bg-cyan-950/20 shadow-glow-cyan'
-                  : file
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[260px] ${dragActive
+                ? 'border-cyan-400 bg-cyan-950/20 shadow-glow-cyan'
+                : file
                   ? 'border-emerald-500/50 bg-navy-900/60'
                   : 'border-slate-700/80 hover:border-cyan-500/50 bg-navy-900/40 hover:bg-navy-900/70'
-              }`}
+                }`}
             >
               <input
                 ref={fileInputRef}
@@ -598,27 +602,25 @@ export default function Register() {
                   return (
                     <div
                       key={step.num}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-                        status === 'completed'
-                          ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
-                          : status === 'running'
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-between ${status === 'completed'
+                        ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                        : status === 'running'
                           ? 'bg-cyan-950/50 border-cyan-400 shadow-glow-cyan text-cyan-300'
                           : status === 'error'
-                          ? 'bg-rose-950/50 border-rose-500/50 text-rose-300'
-                          : 'bg-navy-900/50 border-slate-800 text-slate-400'
-                      }`}
+                            ? 'bg-rose-950/50 border-rose-500/50 text-rose-300'
+                            : 'bg-navy-900/50 border-slate-800 text-slate-400'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-mono font-bold ${
-                            status === 'completed'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : status === 'running'
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-mono font-bold ${status === 'completed'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : status === 'running'
                               ? 'bg-cyan-500/20 text-cyan-400 animate-pulse'
                               : status === 'error'
-                              ? 'bg-rose-500/20 text-rose-400'
-                              : 'bg-navy-800 text-slate-500'
-                          }`}
+                                ? 'bg-rose-500/20 text-rose-400'
+                                : 'bg-navy-800 text-slate-500'
+                            }`}
                         >
                           {status === 'completed' ? (
                             <Check className="w-4 h-4 text-emerald-400" />

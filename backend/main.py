@@ -1,10 +1,10 @@
 """
-SourceMark Backend API Service
+SourceMark Backend API Service (Enterprise Production Edition)
 FastAPI implementation for Digital Content Provenance & Authenticity Platform
 Base URL: http://127.0.0.1:8000
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -13,9 +13,9 @@ import datetime
 import uuid
 
 app = FastAPI(
-    title="SourceMark Provenance Engine API",
-    description="Digital Content Provenance & Authenticity Platform REST Endpoints",
-    version="1.0.0"
+    title="SourceMark Enterprise Provenance Engine API",
+    description="Digital Content Provenance & Authenticity Platform Enterprise REST Endpoints with RBAC",
+    version="2.0.0"
 )
 
 # Enable CORS for the React Vite frontend
@@ -27,7 +27,113 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Enterprise Roles
+ROLES = {
+    "ADMINISTRATOR": "ADMINISTRATOR",
+    "FORENSIC_INVESTIGATOR": "FORENSIC_INVESTIGATOR",
+    "SOC_ANALYST": "SOC_ANALYST",
+    "AUDITOR": "AUDITOR",
+    "ORGANIZATION_MANAGER": "ORGANIZATION_MANAGER",
+    "USER": "USER",
+}
+
+# Role Permissions Matrix
+ROLE_PERMISSIONS = {
+    "ADMINISTRATOR": [
+        "users:read", "users:write", "users:delete",
+        "roles:assign", "system:lockdown", "keys:revoke", "keys:approve",
+        "ledger:read", "ledger:rollback", "sources:read", "sources:write",
+        "investigations:read", "investigations:write", "alerts:read", "alerts:write",
+        "approvals:read", "approvals:decide", "audit:read", "audit:export"
+    ],
+    "FORENSIC_INVESTIGATOR": [
+        "sources:read", "sources:verify", "investigations:read", "investigations:write",
+        "investigations:close", "evidence:export", "ledger:read", "keys:inspect",
+        "alerts:read", "audit:read"
+    ],
+    "SOC_ANALYST": [
+        "alerts:read", "alerts:contain", "alerts:dismiss", "keys:quarantine",
+        "keys:inspect", "sources:read", "sources:verify", "investigations:read",
+        "system:status", "audit:read"
+    ],
+    "AUDITOR": [
+        "audit:read", "audit:export", "ledger:read", "ledger:verify",
+        "sources:read", "keys:inspect", "approvals:read", "compliance:generate"
+    ],
+    "ORGANIZATION_MANAGER": [
+        "sources:read", "sources:write", "approvals:read", "approvals:decide",
+        "team:read", "team:manage", "reports:generate", "audit:read"
+    ],
+    "USER": [
+        "sources:read", "sources:register", "sources:verify", "keys:view_own",
+        "approvals:request"
+    ]
+}
+
 # In-Memory Database for Demo / Verification
+USERS_DB = [
+    {
+        "id": "USR-ADMIN-01",
+        "name": "Chief Security Officer (Admin)",
+        "email": "admin@sourcemark.io",
+        "role": "ADMINISTRATOR",
+        "organizationId": "ORG-01",
+        "status": "ACTIVE",
+        "mfaEnabled": True,
+        "createdAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+        "id": "USR-INV-01",
+        "name": "Agent Evelyn Vance (Forensics)",
+        "email": "investigator@sourcemark.io",
+        "role": "FORENSIC_INVESTIGATOR",
+        "organizationId": "ORG-01",
+        "status": "ACTIVE",
+        "mfaEnabled": True,
+        "createdAt": "2026-10-05T09:15:00.000Z"
+    },
+    {
+        "id": "USR-SOC-01",
+        "name": "Marcus Brody (SOC Lead)",
+        "email": "soc@sourcemark.io",
+        "role": "SOC_ANALYST",
+        "organizationId": "ORG-02",
+        "status": "ACTIVE",
+        "mfaEnabled": True,
+        "createdAt": "2026-10-10T11:30:00.000Z"
+    },
+    {
+        "id": "USR-AUD-01",
+        "name": "Sophia Chen (Lead Auditor)",
+        "email": "auditor@sourcemark.io",
+        "role": "AUDITOR",
+        "organizationId": "ORG-03",
+        "status": "ACTIVE",
+        "mfaEnabled": True,
+        "createdAt": "2026-10-12T14:20:00.000Z"
+    },
+    {
+        "id": "USR-MGR-01",
+        "name": "Director David Sterling (Org Lead)",
+        "email": "manager@sourcemark.io",
+        "role": "ORGANIZATION_MANAGER",
+        "organizationId": "ORG-01",
+        "status": "ACTIVE",
+        "mfaEnabled": True,
+        "createdAt": "2026-10-08T10:00:00.000Z"
+    },
+    {
+        "id": "USR-CUSTODIAN-01",
+        "name": "Alex Rivera (Digital Contributor)",
+        "email": "user@sourcemark.io",
+        "role": "USER",
+        "organizationId": "ORG-01",
+        "status": "ACTIVE",
+        "mfaEnabled": False,
+        "createdAt": "2026-10-15T16:45:00.000Z"
+    }
+]
+
 SOURCES_DB: Dict[str, Dict[str, Any]] = {
     "SRC-98214": {
         "id": "SRC-98214",
@@ -40,7 +146,7 @@ SOURCES_DB: Dict[str, Dict[str, Any]] = {
         "publicKey": "a9103847bce12830948120938471029384710293847102938471029384710293",
         "keyId": "ED25519-A9103847",
         "creator": "Dr. Evelyn Vance (Chief Geoint Analyst)",
-        "creatorId": "AGY-USR-0042",
+        "creatorId": "USR-INV-01",
         "category": "Satellite Intelligence",
         "description": "High-resolution multispectral imagery of Sector 4B survey area.",
         "sourceOrigin": "National Geospatial Imaging Pipeline / Node Alpha",
@@ -73,7 +179,70 @@ LEDGER_CHAIN: List[Dict[str, Any]] = [
         "currentHash": "19a8264eef6551b91bc6b46ef85860d4b918b956a90bb8552140ebcc2ec8d752",
         "status": "CONFIRMED",
         "verified": True,
-        "payload": {"sourceId": "SRC-98214", "creatorId": "AGY-USR-0042"}
+        "payload": {"sourceId": "SRC-98214", "creatorId": "USR-INV-01"}
+    }
+]
+
+INVESTIGATIONS_DB = [
+    {
+        "id": "INV-CASE-0104",
+        "title": "Tampered Satellite Map Header in Sector 4B",
+        "sourceId": "SRC-98214",
+        "severity": "HIGH",
+        "status": "UNDER_INVESTIGATION",
+        "assignedTo": "USR-INV-01",
+        "assignedToName": "Agent Evelyn Vance",
+        "createdBy": "USR-SOC-01",
+        "createdByName": "Marcus Brody",
+        "notes": [
+            {
+                "author": "Marcus Brody (SOC Lead)",
+                "text": "Automated integrity alert triggered: Bit-level hash divergence detected during routine orbital asset check.",
+                "timestamp": "2026-10-29T10:14:00.000Z",
+            }
+        ],
+        "createdAt": "2026-10-29T10:14:00.000Z",
+        "updatedAt": "2026-10-29T14:22:00.000Z",
+    }
+]
+
+ALERTS_DB = [
+    {
+        "id": "ALT-8842",
+        "title": "Uncatalogued Public Key Registration Attempt",
+        "severity": "MEDIUM",
+        "sourceId": "SRC-35253",
+        "status": "NEW",
+        "type": "UNTRUSTED_KEY",
+        "description": "File signed with Ed25519 key not catalogued in Enterprise PKI Trust Registry.",
+        "timestamp": "2026-10-30T14:05:12.000Z",
+        "contained": False,
+    }
+]
+
+APPROVALS_DB = [
+    {
+        "id": "APR-501",
+        "title": "Derivative Authorization Request: Recon Map High-Contrast Layer",
+        "sourceId": "SRC-98214",
+        "requestedBy": "USR-CUSTODIAN-01",
+        "requestedByName": "Alex Rivera",
+        "status": "PENDING",
+        "department": "Orbital Reconnaissance",
+        "reason": "Authorized crop and multispectral contrast enhancement for field debriefing.",
+        "timestamp": "2026-10-30T15:20:00.000Z",
+    }
+]
+
+AUDIT_LOGS_DB = [
+    {
+        "id": "AUD-0001",
+        "action": "SYSTEM_GENESIS_INITIALIZED",
+        "actor": "SYSTEM",
+        "role": "SYSTEM",
+        "details": "SourceMark Enterprise PKI & Provenance Engine initialized.",
+        "timestamp": "2026-10-20T00:00:00.000Z",
+        "ipAddress": "127.0.0.1",
     }
 ]
 
@@ -98,18 +267,44 @@ class VerifyPayload(BaseModel):
     sourceId: Optional[str] = None
     fileName: Optional[str] = "inspected_asset"
 
+class LoginPayload(BaseModel):
+    email: str
+    password: str
+
+class AuthRegisterPayload(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: Optional[str] = "USER"
+    organizationId: Optional[str] = "ORG-01"
 
 @app.get("/api/health")
 def health_check():
     return {
         "status": "healthy",
         "service": "SourceMark Provenance Engine",
-        "version": "1.0.0",
+        "version": "2.0.0-enterprise",
         "curve": "Ed25519",
         "hasher": "SHA-256",
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "rbacEnabled": True
     }
 
+@app.post("/api/auth/login")
+def login(payload: LoginPayload):
+    user = next((u for u in USERS_DB if u["email"].lower() == payload.email.lower()), None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password credentials")
+    
+    token = f"jwt-mock-{user['id']}-{int(datetime.datetime.now().timestamp())}"
+    return {
+        "success": True,
+        "token": token,
+        "user": {
+            **user,
+            "permissions": ROLE_PERMISSIONS.get(user["role"], [])
+        }
+    }
 
 @app.post("/api/register")
 def register_file(payload: RegisterPayload):
@@ -154,18 +349,17 @@ def register_file(payload: RegisterPayload):
     return {
         "success": True,
         "data": source_record,
-        "block": new_block
+        "source": source_record,
+        "block": new_block,
+        "isDemoMode": False
     }
-
 
 @app.post("/api/verify")
 def verify_file(payload: VerifyPayload):
-    # Rule 1: Search by Source ID if specified
     matched_source = None
     if payload.sourceId:
         matched_source = SOURCES_DB.get(payload.sourceId.strip())
     else:
-        # Search by hash match
         for s in SOURCES_DB.values():
             if s["sha256"].lower() == payload.sha256.lower():
                 matched_source = s
@@ -205,14 +399,12 @@ def verify_file(payload: VerifyPayload):
             "details": f"File references Source ID {matched_source['id']} but content bits have been altered."
         }
 
-
 @app.get("/api/source/{source_id}")
 def get_source(source_id: str):
     record = SOURCES_DB.get(source_id.strip())
     if not record:
         raise HTTPException(status_code=404, detail="Source not found")
     return record
-
 
 @app.get("/api/dashboard")
 def get_dashboard():
@@ -222,14 +414,14 @@ def get_dashboard():
         "editedDetected": 4,
         "unknownDetected": 9,
         "integrityScore": "100%",
-        "cryptographicEngine": "Ed25519 / SHA-256 (FastAPI Online)"
+        "cryptographicEngine": "Ed25519 / SHA-256 (FastAPI Online)",
+        "activeCases": len([c for c in INVESTIGATIONS_DB if c["status"] != "CLOSED"]),
+        "pendingAlerts": len([a for a in ALERTS_DB if not a["contained"]])
     }
-
 
 @app.get("/api/ledger")
 def get_ledger():
     return LEDGER_CHAIN
-
 
 @app.get("/api/ledger/validate")
 def validate_ledger():
@@ -250,3 +442,18 @@ def validate_ledger():
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
 
+@app.get("/api/investigations")
+def get_investigations():
+    return {"success": True, "cases": INVESTIGATIONS_DB}
+
+@app.get("/api/alerts")
+def get_alerts():
+    return {"success": True, "alerts": ALERTS_DB}
+
+@app.get("/api/approvals")
+def get_approvals():
+    return {"success": True, "approvals": APPROVALS_DB}
+
+@app.get("/api/audit-events")
+def get_audit_events():
+    return {"success": True, "auditLogs": AUDIT_LOGS_DB}

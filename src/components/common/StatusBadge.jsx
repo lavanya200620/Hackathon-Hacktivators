@@ -8,7 +8,27 @@ export default function StatusBadge({ status, text, size = 'md' }) {
   let Icon = Shield;
   let label = text || status;
 
-  if (norm.includes('ORIGINAL') || norm.includes('VERIFIED') || norm === 'VALID' || norm === 'CONFIRMED') {
+  if (norm.includes('MODIFIED_AND_COMPROMISED') || (norm.includes('MODIFIED') && norm.includes('COMPROMISED'))) {
+    colors = 'bg-rose-950/90 text-rose-300 border-rose-500/70 shadow-glow-red animate-pulse';
+    Icon = AlertTriangle;
+    label = text || 'Modified & Key Compromised';
+  } else if (norm.includes('AUTHORIZED_DERIVATIVE') || norm.includes('DERIVATIVE')) {
+    colors = 'bg-cyan-950/70 text-cyan-300 border-cyan-500/40 shadow-glow-cyan';
+    Icon = CheckCircle2;
+    label = text || 'Authorized Derivative';
+  } else if (norm.includes('PRE_COMPROMISE')) {
+    colors = 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 shadow-glow-green';
+    Icon = CheckCircle2;
+    label = text || 'Pre-Compromise Valid';
+  } else if (norm.includes('REQUIRES_INVESTIGATION') || norm.includes('INVESTIGATION')) {
+    colors = 'bg-amber-950/80 text-amber-300 border-amber-500/50 shadow-glow-amber';
+    Icon = AlertTriangle;
+    label = text || 'Requires Investigation';
+  } else if (norm.includes('COMPROMISED') || norm.includes('STOLEN')) {
+    colors = 'bg-rose-950/80 text-rose-300 border-rose-500/50 shadow-glow-red';
+    Icon = AlertTriangle;
+    label = text || 'Key Compromised';
+  } else if (norm.includes('ORIGINAL') || norm.includes('VERIFIED') || norm === 'VALID' || norm === 'CONFIRMED') {
     colors = 'bg-emerald-950/70 text-emerald-400 border-emerald-500/40 shadow-glow-green';
     Icon = CheckCircle2;
     label = text || 'Original – Cryptographically Verified';

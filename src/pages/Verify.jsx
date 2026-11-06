@@ -404,6 +404,16 @@ export default function Verify() {
       {/* VERIFICATION RESULTS DISPLAY: THREE DISTINCT RESULT STATES */}
       {verificationResult && (
         <div className="space-y-6 animate-in slide-in-from-bottom-3 duration-300">
+          {/* Production vs Demo Security Disclosure Banner */}
+          <div className="p-3.5 rounded-xl bg-navy-950/80 border border-cyan-500/30 text-xs text-slate-300 flex items-start gap-3 shadow-md">
+            <Info className="w-4 h-4 text-cyan-accent flex-shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="text-cyan-300 font-mono font-bold uppercase tracking-wider text-[11px] mr-1">
+                Demo Security Disclosure:
+              </span>
+              This verification was executed within the browser's client-side cryptographic sandbox ({verificationResult.isDemoMode ? 'Client Demo Mode' : 'Backend Connected'}). While Ed25519 and SHA-256 mathematical calculations are 100% authentic, production enterprise deployments require an external RFC 3161 Timestamp Authority, FIPS 140-3 Hardware Security Modules (HSM), and immutable WORM Object Lock.
+            </div>
+          </div>
           {/* RESULT STATE 1: ORIGINAL (GREEN) */}
           {verificationResult.verdict === 'ORIGINAL' && (
             <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-emerald-500/50 shadow-glow-green space-y-6">
@@ -481,6 +491,199 @@ export default function Verify() {
                 </div>
                 <div className="p-3 rounded-lg bg-navy-900 border border-emerald-500/30 text-emerald-300 font-mono text-xs break-all select-all">
                   {verificationResult.source.sha256}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: AUTHORIZED DERIVATIVE (CYAN / EMERALD) */}
+          {verificationResult.verdict === 'AUTHORIZED_DERIVATIVE' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-cyan-500/50 shadow-glow-cyan space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-glow-cyan">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Authorized Derivative – Lineage Confirmed</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-950 border border-cyan-500/50 text-cyan-400">
+                        AUTHORIZED RE-SAVE
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-navy-900 border border-slate-800 text-xs font-mono text-cyan-400">
+                    Master Source ID: {verificationResult.source?.id}
+                  </span>
+                </div>
+              </div>
+
+              {/* Version & Transformation Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Lineage Status</span>
+                  <span className="text-cyan-300 font-bold flex items-center gap-1.5 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4" /> Cryptographic Child Version
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Transformation Reason</span>
+                  <span className="text-slate-200 font-sans truncate block mt-0.5">
+                    {verificationResult.version?.transformationReason || 'Approved Format Transformation'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Authorizing Custodian</span>
+                  <span className="text-slate-200 font-sans truncate block mt-0.5">
+                    {verificationResult.version?.actor || 'Master Source Custodian'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-navy-950 border border-slate-800">
+                  <span className="text-slate-500 uppercase text-[10px] block">Version ID</span>
+                  <span className="text-cyan-400 font-mono mt-0.5 block">
+                    {verificationResult.version?.versionId || 'VER-01'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: COMPROMISED KEY ALERT (ROSE / PURPLE) */}
+          {verificationResult.verdict === 'COMPROMISED_KEY' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-rose-500/60 shadow-glow-red space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-glow-red animate-pulse">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Security Alert – Signed with Compromised Key</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-950 border border-rose-500/50 text-rose-400 animate-pulse">
+                        COMPROMISED KEY
+                      </span>
+                    </div>
+                    <p className="text-xs text-rose-300/90 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-xs font-mono text-rose-300">
+                    Source ID: {verificationResult.source?.id}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-200">
+                <strong>Forensic Warning:</strong> The Ed25519 digital signature mathematically verifies against the registered public key, but that key has been cataloged as stolen or compromised in the Key Security Centre. This document may be a fraudulent asset created by an unauthorized actor using exfiltrated credentials.
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: MODIFIED AND COMPROMISED KEY ALERT (CRITICAL RED) */}
+          {verificationResult.verdict === 'MODIFIED_AND_COMPROMISED_KEY' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border-2 border-rose-600 shadow-glow-red space-y-6 bg-rose-950/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-rose-600/20 border border-rose-500 flex items-center justify-center text-rose-400 shadow-glow-red animate-pulse">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Critical Alert – Modified File & Compromised Key</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-950 border border-rose-500 text-rose-300 animate-pulse">
+                        MULTI-VECTOR ALERT
+                      </span>
+                    </div>
+                    <p className="text-xs text-rose-300 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-xs font-mono text-rose-300">
+                    Source ID: {verificationResult.source?.id}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-700 text-xs text-rose-200 leading-relaxed">
+                <strong>Multi-Vector Security Failure:</strong> Two critical security violations occurred simultaneously: (1) The file's binary SHA-256 fingerprint differs from the registered master record, and (2) The authority signing key has been compromised. Treat this content as untrusted.
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: REQUIRES FORENSIC INVESTIGATION (AMBER) */}
+          {verificationResult.verdict === 'REQUIRES_INVESTIGATION' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-amber-500/60 shadow-glow-amber space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-glow-amber">
+                    <HelpCircle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Requires Forensic Investigation</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 border border-amber-500/50 text-amber-400">
+                        INVESTIGATION REQUIRED
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-300/90 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-navy-900 border border-slate-800 text-xs font-mono text-amber-300">
+                    Status: UNVERIFIED
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-800/60 text-xs text-amber-200">
+                <strong>Forensic Advisory:</strong> Key status is uncatalogued or undetermined, or this file matches an unauthorized derivative transformation. Administrative review in the Key Security Centre or Version Control vault is required before accepting this asset as evidence.
+              </div>
+            </div>
+          )}
+
+          {/* RESULT STATE: PRE-COMPROMISE VALID (EMERALD) */}
+          {verificationResult.verdict === 'PRE_COMPROMISE_VALID' && (
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-emerald-500/50 shadow-glow-green space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-glow-green">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white">Original – Pre-Compromise Integrity Verified</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 border border-emerald-500/50 text-emerald-400">
+                        PRE-COMPROMISE INTEGRITY
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {verificationResult.details}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-navy-900 border border-slate-800 text-xs font-mono text-cyan-400">
+                    Source ID: {verificationResult.source?.id}
+                  </span>
                 </div>
               </div>
             </div>

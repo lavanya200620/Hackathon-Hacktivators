@@ -1,4 +1,4 @@
-import { calculateLedgerBlockHash } from './crypto';
+import { calculateLedgerBlockHash } from './crypto.js';
 
 const SOURCES_KEY = 'sourcemark_sources_db';
 const LEDGER_KEY = 'sourcemark_ledger_chain';
@@ -21,7 +21,16 @@ const INITIAL_SOURCES = [
     category: 'Satellite Intelligence',
     description: 'High-resolution multispectral imagery of Sector 4B survey area.',
     sourceOrigin: 'National Geospatial Imaging Pipeline / Node Alpha',
+    signedAt: '2026-10-24T09:12:00.000Z',
+    signatureTimestamp: '2026-10-24T09:12:00.000Z',
     registeredAt: '2026-10-24T09:15:22.000Z',
+    tsaToken: {
+      authority: 'DigiCert Qualified RFC 3161 TSA #1',
+      timestamp: '2026-10-24T09:12:00.000Z',
+      tokenHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      signature: '3045022100e4b8a1c97a8b9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abcdef',
+      status: 'VERIFIED',
+    },
     status: 'ACTIVE_REGISTERED',
     verificationCount: 8,
     lastVerifiedAt: '2026-10-29T14:30:11.000Z',
@@ -40,8 +49,17 @@ const INITIAL_SOURCES = [
     creatorId: 'SYSTEM-CI-BUILD',
     category: 'System Firmware',
     description: 'Cryptographically signed IoT Gateway production kernel package.',
-    sourceOrigin: 'Air-gapped Key Ceremonies HSM #3',
+    sourceOrigin: 'Simulated Key Ceremony / Demo CI Authority #3',
+    signedAt: '2026-10-26T11:40:00.000Z',
+    signatureTimestamp: '2026-10-26T11:40:00.000Z',
     registeredAt: '2026-10-26T11:42:05.000Z',
+    tsaToken: {
+      authority: 'Sectigo RFC 3161 Qualified Time Stamping Authority',
+      timestamp: '2026-10-26T11:40:00.000Z',
+      tokenHash: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+      signature: '304502207b1a2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef',
+      status: 'VERIFIED',
+    },
     status: 'ACTIVE_REGISTERED',
     verificationCount: 24,
     lastVerifiedAt: '2026-10-30T08:05:19.000Z',
@@ -61,7 +79,16 @@ const INITIAL_SOURCES = [
     category: 'Legal Document',
     description: 'Binding mutual merger terms, executed with biometric digital witness.',
     sourceOrigin: 'Corporate Legal Vault / Dublin Office',
+    signedAt: '2026-10-28T16:18:00.000Z',
+    signatureTimestamp: '2026-10-28T16:18:00.000Z',
     registeredAt: '2026-10-28T16:20:44.000Z',
+    tsaToken: {
+      authority: 'GlobalSign RFC 3161 Qualified Timestamp Server',
+      timestamp: '2026-10-28T16:18:00.000Z',
+      tokenHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+      signature: '3045022091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80',
+      status: 'VERIFIED',
+    },
     status: 'ACTIVE_REGISTERED',
     verificationCount: 5,
     lastVerifiedAt: '2026-10-30T04:12:00.000Z',
@@ -202,13 +229,17 @@ export const ledgerStorage = {
   },
 
   getSourceById(id) {
+    if (!id) return null;
+    const cleanId = typeof id === 'string' ? id.trim().toLowerCase() : '';
     const sources = this.getSources();
-    return sources.find(s => s.id.toLowerCase() === id.trim().toLowerCase());
+    return sources.find(s => s.id && s.id.toLowerCase() === cleanId);
   },
 
   findSourceByHash(hash) {
+    if (!hash) return null;
+    const cleanHash = typeof hash === 'string' ? hash.trim().toLowerCase() : '';
     const sources = this.getSources();
-    return sources.find(s => s.sha256.toLowerCase() === hash.trim().toLowerCase());
+    return sources.find(s => (s.sha256 && s.sha256.toLowerCase() === cleanHash) || (s.hash && s.hash.toLowerCase() === cleanHash));
   },
 
   addSource(sourceRecord) {

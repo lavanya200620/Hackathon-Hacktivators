@@ -14,7 +14,13 @@ import {
   Lock,
   Layers,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  QrCode,
+  Award,
+  GitBranch,
+  Key,
+  BookOpen,
+  FileSearch
 } from 'lucide-react';
 import {
   PieChart,
@@ -32,12 +38,18 @@ import StatCard from '../components/common/StatCard';
 import StatusBadge from '../components/common/StatusBadge';
 import { apiService } from '../services/api';
 import { ledgerStorage } from '../services/ledgerStorage';
+import { checkpointService } from '../services/checkpointService';
+import { keySecurityService } from '../services/keySecurity';
+import { versionControlService } from '../services/versionControl';
 
 export default function Overview() {
   const [stats, setStats] = useState(ledgerStorage.getStats());
   const [ledgerBlocks, setLedgerBlocks] = useState(ledgerStorage.getLedgerBlocks());
   const [sources, setSources] = useState(ledgerStorage.getSources());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [versionsCount, setVersionsCount] = useState(2);
+  const [compromisedCount, setCompromisedCount] = useState(0);
+  const [checkpointStatus, setCheckpointStatus] = useState('INTACT & SEALED');
 
   useEffect(() => {
     loadDashboardData();
@@ -50,6 +62,21 @@ export default function Overview() {
     const blocks = await apiService.getLedger();
     setLedgerBlocks(blocks.blocks || ledgerStorage.getLedgerBlocks());
     setSources(ledgerStorage.getSources());
+
+    // Load Security & Integrity metrics
+    try {
+      const vers = versionControlService.getVersions();
+      setVersionsCount(vers.length);
+
+      const compromised = keySecurityService.getCompromisedKeys();
+      setCompromisedCount(compromised.length);
+
+      const chk = checkpointService.verifyLedgerIntegrity();
+      setCheckpointStatus(chk.status === 'ROLLBACK_DETECTED' ? 'ROLLBACK DETECTED' : 'INTACT & SEALED');
+    } catch (e) {
+      console.warn('Dashboard security sync warning:', e);
+    }
+
     setTimeout(() => setIsRefreshing(false), 300);
   };
 
@@ -150,12 +177,55 @@ export default function Overview() {
         />
       </div>
 
+      {/* Secondary Security, Integrity & PKI Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="p-4 rounded-xl bg-navy-900/80 border border-background-border shadow-md">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span>Authorized Derivatives</span>
+            <GitBranch className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-cyan-300">{versionsCount}</div>
+          <div className="text-[10px] text-slate-500 font-mono mt-0.5">Approved re-saves & redactions</div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-900/80 border border-background-border shadow-md">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span>Compromised Keys</span>
+            <Key className="w-4 h-4 text-rose-400" />
+          </div>
+          <div className={`text-xl font-bold font-mono ${compromisedCount > 0 ? 'text-rose-400' : 'text-slate-300'}`}>
+            {compromisedCount}
+          </div>
+          <div className="text-[10px] text-slate-500 font-mono mt-0.5">{compromisedCount > 0 ? 'Action required in PKI' : 'Zero compromised keys'}</div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-900/80 border border-background-border shadow-md">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span>Checkpoint Watchdog</span>
+            <Lock className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className={`text-xs font-bold font-mono ${checkpointStatus.includes('ROLLBACK') ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+            {checkpointStatus}
+          </div>
+          <div className="text-[10px] text-slate-500 font-mono mt-0.5">WORM cold storage watch</div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-900/80 border border-background-border shadow-md">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span>Forensic Score Engine</span>
+            <Cpu className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-emerald-400">8 Vectors</div>
+          <div className="text-[10px] text-slate-500 font-mono mt-0.5">Rule-based triage enabled</div>
+        </div>
+      </div>
+
       {/* Quick Actions Panel */}
       <div className="glass-panel p-5 rounded-2xl border border-slate-800">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-400" />
-            Forensic Quick Actions
+            Forensic Quick Actions & Security Suites
           </h2>
           <span className="text-xs text-slate-500 font-mono">Workflow Shortcuts</span>
         </div>
@@ -193,34 +263,98 @@ export default function Overview() {
           </Link>
 
           <Link
-            to="/compare"
-            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-blue-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
+            to="/forensic-intelligence"
+            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-cyan-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
           >
-            <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors">
-              <GitCompare className="w-5 h-5" />
+            <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+              <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 flex items-center gap-1">
-                Compare Files
+              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-cyan-400 flex items-center gap-1">
+                Forensic Score
                 <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Side-by-side pixel & tamper diff</p>
+              <p className="text-xs text-slate-400 mt-0.5">0-100 rule-based triage score</p>
             </div>
           </Link>
 
           <Link
-            to="/ledger"
+            to="/evidence-certificates"
+            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-blue-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
+          >
+            <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 flex items-center gap-1">
+                Evidence Certs
+                <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">ISO/IEC 27037 PDF evidence jurat</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/qr-verification"
+            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-cyan-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
+          >
+            <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-cyan-400 flex items-center gap-1">
+                QR Verification
+                <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Cryptographic barcode scanner</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/batch-verification"
             className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-indigo-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
           >
             <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
-              <Boxes className="w-5 h-5" />
+              <Layers className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-200 group-hover:text-indigo-400 flex items-center gap-1">
-                View Audit Ledger
+                Batch Verification
                 <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Inspect hash-chained block records</p>
+              <p className="text-xs text-slate-400 mt-0.5">High-volume multi-file triage</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/checkpoints"
+            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-emerald-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
+          >
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-emerald-400 flex items-center gap-1">
+                Rollback Watchdog
+                <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">WORM state & anti-truncation</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/key-security"
+            className="p-4 rounded-xl bg-navy-900/80 border border-slate-800 hover:border-rose-500/40 hover:bg-navy-850 transition-all group flex items-start gap-3.5"
+          >
+            <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 transition-colors">
+              <Key className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 group-hover:text-rose-400 flex items-center gap-1">
+                Key Security
+                <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Stolen key defense & rotation</p>
             </div>
           </Link>
         </div>
